@@ -1,9 +1,18 @@
+import argparse
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Chat with Pygent")
+    parser.add_argument("user_prompt", type=str, help="User prompt")
+    args = parser.parse_args()
+    user_prompt = args.user_prompt.strip()
+
+    if not user_prompt:
+        raise ValueError("Empty prompt")
+
     load_dotenv()
     api_key = os.environ.get("OPENROUTER_API_KEY")
 
@@ -15,12 +24,14 @@ def main():
         api_key=api_key,
     )
 
+    # return
+
     response = client.chat.completions.create(
         model="openrouter/free",
         messages=[
             {
                 "role": "user",
-                "content": "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum.",
+                "content": user_prompt,
             }
         ],
     )
