@@ -1,6 +1,6 @@
 import argparse
 import os
-import json
+import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 from prompts import system_prompt
@@ -34,39 +34,45 @@ def main():
         api_key=api_key,
     )
 
-    # return
+    loop_finished_successfully = False
 
-    response = client.chat.completions.create(
-        model="openrouter/free",
-        messages=messages,
-        tools=available_functions,
-    )
+    for _ in range(20):
 
-    if not response.usage:
-        raise RuntimeError("API response appears to be malformed")
+        response = client.chat.completions.create(
+            model="openrouter/free",
+            messages=messages,
+            tools=available_functions,
+        )
 
-    if args.verbose:
-        print(f'User prompt: {args.user_prompt}')
-        print(f'Prompt tokens: {response.usage.prompt_tokens}')
-        print(f'Response tokens: {response.usage.completion_tokens}')
-        print(f'Total tokens: {response.usage.total_tokens}')
+        if not response.usage:
+            raise RuntimeError("API response appears to be malformed")
 
-    message = response.choices[0].message
+        if args.verbose:
+            print("-" * 40)
+            print(f'User prompt: {args.user_prompt}')
+            print(f'Prompt tokens: {response.usage.prompt_tokens}')
+            print(f'Response tokens: {response.usage.completion_tokens}')
+            print(f'Total tokens: {response.usage.total_tokens}')
+            print("-" * 40)
 
-    if message.tool_calls:
-        print("Tools:")
-        for tool_call in message.tool_calls:
-            result_message = call_function(
-                tool_call, True)
-            print(f"Result:\n\n{result_message["content"]}")
+        message = response.choices[0].message
+        messages.append(message)
 
-        print("--------- Tools end ---------")
-        print("")
-    else:
-        print("Response:")
-        print(message.content)
-        print("--------- Response end ---------")
-        print("")
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                result_message = call_function(
+                    tool_call, True)
+                messages.append(result_message)
+        else:
+            print("\nResponse:\n")
+            print(message.content)
+            print("\n--------- Response end ---------\n")
+            loop_finished_successfully = True
+            sys.exit(0)
+
+    if not loop_finished_successfully:
+        print("Error: Loop did not finish successfully after 20 iterations.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
